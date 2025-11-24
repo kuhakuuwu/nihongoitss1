@@ -1,11 +1,20 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.svg';
 
 export default function Header() {
     const [language, setLanguage] = useState('jp'); // 'jp' or 'vi'
+    const [showAccountMenu, setShowAccountMenu] = useState(false);
+    const navigate = useNavigate();
 
     const toggleLanguage = () => {
         setLanguage(prev => prev === 'jp' ? 'vi' : 'jp');
+    };
+
+    const handleLogout = () => {
+        // TODO: Clear authentication tokens/session
+        // For now, just navigate to login page
+        navigate('/login');
     };
 
     return (
@@ -14,7 +23,8 @@ export default function Header() {
                 <img src={logo} alt="EduConnect" className="h-5" />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+                {/* Language Toggle */}
                 <button
                     onClick={toggleLanguage}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
@@ -29,6 +39,56 @@ export default function Header() {
                         {language === 'jp' ? '日本語' : 'Tiếng Việt'}
                     </span>
                 </button>
+
+                {/* Notification Button */}
+                <button className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    {/* Red dot for notification */}
+                    <span className="absolute top-1.5 right-1.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+                </button>
+
+                {/* Account Button with Dropdown */}
+                <div className="relative">
+                    <button 
+                        onClick={() => setShowAccountMenu(!showAccountMenu)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                            U
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">ユーザー</span>
+                        <svg 
+                            className={`w-4 h-4 text-gray-600 transition-transform ${showAccountMenu ? 'rotate-180' : ''}`}
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {showAccountMenu && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                            <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                                プロフィール確認（情報を見る）
+                            </button>
+                            <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                                パスワード変更
+                            </button>
+                            <div className="border-t border-gray-200 my-1"></div>
+                            <button 
+                                onClick={handleLogout}
+                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 transition-colors"
+                            >
+                                ログアウト
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
     );

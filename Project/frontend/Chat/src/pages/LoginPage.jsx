@@ -1,3 +1,4 @@
+// ログイン
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AuthLayout from '../components/Layout/AuthLayout';
@@ -44,16 +45,14 @@ export default function LoginPage() {
 
             // Đăng nhập thành công
             setLoginData(data);
-            alert('Đăng nhập thành công! Chuyển đến trang chính...');
-            console.log('User logged in:', data);
 
             // Lưu token trong memory nếu chọn "Ghi nhớ"
             if (rememberMe && data.access_token) {
                 console.log('Token saved in memory:', data.access_token);
             }
 
-            // Ở đây bạn có thể chuyển hướng đến trang khác
-            // window.location.href = '/dashboard';
+            // TODO: Chuyển hướng đến trang chính sau khi đăng nhập
+            window.location.href = '/teacher';
 
         } catch (error) {
             setError(error.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
