@@ -2,18 +2,15 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Header from './Header';
 
-
-export default function TeacherLayout({ children, title }) {
+export default function AdminLayout({ children, title }) {
     const { t } = useTranslation();
     const location = useLocation();
     
-    // Sidebar items configuration
+    // Sidebar items configuration for Admin
     const sidebarItems = [
-        { name: t('sidebar.student_list'), path: '/teacher' },
-        { name: t('sidebar.add_student'), path: '/teacher/add-user' },
-        { name: t('sidebar.history'), path: '/teacher/history' },
-        { name: t('sidebar.reminder'), path: '/teacher/reminder' },
-        { name: t('sidebar.create_message'), path: '/teacher/create-message' },
+        { name: t('sidebar.dashboard'), path: '/admin' },
+        { name: t('sidebar.user_management'), path: '/admin/users' },
+        { name: t('sidebar.system_settings'), path: '/admin/settings' },
     ];
 
     return (
@@ -24,7 +21,7 @@ export default function TeacherLayout({ children, title }) {
                 {/* Sidebar */}
                 <aside className="w-64 bg-white border-r border-gray-200 hidden md:block">
                     <div className="py-6">
-                        <h2 className="text-lg font-bold text-gray-800 mb-4 px-6">{t('sidebar.dashboard')}</h2>
+                        <h2 className="text-lg font-bold text-gray-800 mb-4 px-6">{t('sidebar.admin_panel')}</h2>
                         <nav className="space-y-1">
                             {sidebarItems.map((item) => {
                                 const isActive = location.pathname === item.path;

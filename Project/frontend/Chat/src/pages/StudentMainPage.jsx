@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import StudentLayout from "../components/Layout/StudentLayout";
 import { supabase } from "../supabaseClient";
 
 export default function StudentMainPage() {
+    const { t } = useTranslation();
     const [messages, setMessages] = useState([]);
 
     useEffect(() => {
@@ -38,16 +40,16 @@ export default function StudentMainPage() {
     }, []);
 
     return (
-        <StudentLayout title="受信メッセージ一覧">
+        <StudentLayout title={t('student.message_list')}>
             <div className="overflow-x-auto">
                 <table className="w-full">
                     <thead>
                         <tr className="bg-gray-50 border-b-2 border-gray-200">
-                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">件名</th>
-                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">送信者</th>
-                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">送信日時</th>
-                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">状態</th>
-                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">操作</th>
+                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('student.subject')}</th>
+                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('student.sender')}</th>
+                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('student.send_date')}</th>
+                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('student.status')}</th>
+                            <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('student.action')}</th>
                         </tr>
                     </thead>
 
@@ -55,7 +57,7 @@ export default function StudentMainPage() {
                         {messages.length === 0 && (
                             <tr>
                                 <td colSpan="5" className="text-center py-6 text-gray-500">
-                                    メッセージがありません
+                                    {t('common.no_messages')}
                                 </td>
                             </tr>
                         )}
@@ -94,7 +96,7 @@ export default function StudentMainPage() {
                                                 : "bg-green-100 text-green-800"
                                         }`}
                                     >
-                                        {message.status}
+                                        {message.status === "未読" ? t('teacher.unread') : t('teacher.read')}
                                     </span>
                                 </td>
 
@@ -105,11 +107,11 @@ export default function StudentMainPage() {
                                             to={`/student/message/${message.id}`}
                                             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
                                         >
-                                            詳細
+                                            {t('common.detail')}
                                         </Link>
 
                                         <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm shadow-sm">
-                                            返信
+                                            {t('common.reply')}
                                         </button>
                                     </div>
                                 </td>

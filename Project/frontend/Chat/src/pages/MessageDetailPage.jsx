@@ -1,10 +1,12 @@
 // 送信メッセージ詳細
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import TeacherLayout from "../components/Layout/TeacherLayout";
 import { supabase } from "../supabaseClient";
 
 export default function MessageDetailPage() {
+    const { t } = useTranslation();
     const { id } = useParams();
     const navigate = useNavigate();
 
@@ -44,9 +46,9 @@ export default function MessageDetailPage() {
 
     if (loading) {
         return (
-            <TeacherLayout title="送信メッセージ詳細">
+            <TeacherLayout title={t('message.detail_title')}>
                 <div className="text-center text-gray-500 py-10 text-lg">
-                    読み込み中...
+                    {t('common.loading')}
                 </div>
             </TeacherLayout>
         );
@@ -54,16 +56,16 @@ export default function MessageDetailPage() {
 
     if (!message) {
         return (
-            <TeacherLayout title="送信メッセージ詳細">
+            <TeacherLayout title={t('message.detail_title')}>
                 <div className="text-center text-red-500 py-10 text-lg">
-                    メッセージが見つかりません。
+                    {t('message.not_found')}
                 </div>
             </TeacherLayout>
         );
     }
 
     return (
-        <TeacherLayout title="送信メッセージ詳細">
+        <TeacherLayout title={t('message.detail_title')}>
             <div className="max-w-3xl mx-auto bg-white rounded-lg shadow border px-6 py-6">
 
                 {/* 🔙 Chỉ quay về màn tạo tin nhắn */}
@@ -72,7 +74,7 @@ export default function MessageDetailPage() {
                         onClick={() => navigate("/teacher/create-message")}
                         className="text-blue-600 text-sm hover:underline"
                     >
-                        ← メッセージ作成画面に戻る
+                        ← {t('message.back_to_create')}
                     </button>
                 </div>
 
@@ -84,21 +86,21 @@ export default function MessageDetailPage() {
                 {/* Info */}
                 <div className="text-sm text-gray-600 space-y-1 mb-6">
                     <p>
-                        <span className="font-semibold">送信者:</span>{" "}
+                        <span className="font-semibold">{t('message.sender')}:</span>{" "}
                         {message.sender_id}
                     </p>
                     <p>
-                        <span className="font-semibold">宛先:</span>{" "}
+                        <span className="font-semibold">{t('message.recipient_label')}:</span>{" "}
                         {message.recipient_id}
                     </p>
                     <p>
-                        <span className="font-semibold">送信日時:</span>{" "}
+                        <span className="font-semibold">{t('message.send_date')}:</span>{" "}
                         {message.created_at
                             ? new Date(message.created_at).toLocaleString("ja-JP")
                             : ""}
                     </p>
                     <p>
-                        <span className="font-semibold">状態:</span>{" "}
+                        <span className="font-semibold">{t('message.status')}:</span>{" "}
                         <span
                             className={
                                 message.status === "未読"
@@ -106,7 +108,7 @@ export default function MessageDetailPage() {
                                     : "text-green-700"
                             }
                         >
-                            {message.status}
+                            {message.status === "未読" ? t('teacher.unread') : t('teacher.read')}
                         </span>
                     </p>
                 </div>

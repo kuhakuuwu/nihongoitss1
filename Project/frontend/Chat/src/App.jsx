@@ -1,11 +1,17 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import AddUserPage from './pages/AddUserPage'
 import TeacherMainPage from './pages/TeacherMainPage'
 import StudentMainPage from './pages/StudentMainPage'
 import CreateMessagePage from './pages/CreateMessagePage'
 import MessageDetailPage from './pages/MessageDetailPage'
-import HomePage from './pages/HomePage'   // 🟢 THÊM HOMEPAGE
+import ReminderSettingsPage from './pages/ReminderSettingsPage'
+import SendCompletePage from './pages/SendCompletePage'
+import HistoryListPage from './pages/HistoryListPage'
+import StudentHistoryPage from './pages/StudentHistoryPage'
+import SystemSettingsPage from './pages/SystemSettingsPage'
+import HomePage from './pages/HomePage'   //  THÊM HOMEPAGE
 import './index.css'
 
 function App() {
@@ -13,24 +19,31 @@ function App() {
     <Router>
       <Routes>
 
-        {/* 🟢 HomePage là trang đầu tiên */}
+        {/* HomePage là trang đầu tiên */}
         <Route path="/" element={<HomePage />} />
 
-        {/* Login */}
+        {/* Login & Register */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
 
         {/* Teacher */}
         <Route path="/teacher" element={<TeacherMainPage />} />
         <Route path="/teacher/add-user" element={<AddUserPage />} />
         <Route path="/teacher/create-message" element={<CreateMessagePage />} />
+        <Route path="/teacher/message/:id" element={<MessageDetailPage />} />
+        <Route path="/teacher/reminder" element={<ReminderSettingsPage />} />
+        <Route path="/teacher/send-complete" element={<SendCompletePage />} />
+        <Route path="/teacher/history" element={<HistoryListPage />} />
 
         {/* Student */}
         <Route path="/student" element={<StudentMainPage />} />
-        <Route path="/teacher/history/:id" element={<MessageDetailPage />} />
+        <Route path="/student/history" element={<StudentHistoryPage />} />
+        <Route path="/student/message/:id" element={<MessageDetailPage />} />
 
         {/* Admin / Standalone */}
         <Route path="/add-user" element={<AddUserPage />} />
+        <Route path="/admin/settings" element={<SystemSettingsPage />} />
 
       </Routes>
     </Router>

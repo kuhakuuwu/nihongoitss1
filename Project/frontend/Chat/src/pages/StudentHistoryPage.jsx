@@ -1,13 +1,13 @@
-// 履歴一覧
+// 学生履歴一覧 - 既読メッセージ
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import TeacherLayout from "../components/Layout/TeacherLayout";
+import StudentLayout from "../components/Layout/StudentLayout";
 import { supabase } from "../supabaseClient";
 
 const ITEMS_PER_PAGE = 10;
 
-export default function HistoryListPage() {
+export default function StudentHistoryPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const [messages, setMessages] = useState([]);
@@ -22,27 +22,26 @@ export default function HistoryListPage() {
             // Lấy user hiện tại từ localStorage
             const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
             
-            // sender_id có thể là id (uuid) hoặc email hoặc username
-            // Tạo mảng các giá trị có thể dùng để lọc
-            const possibleSenderIds = [
+            // recipient_id có thể là id (uuid) hoặc email hoặc username
+            const possibleRecipientIds = [
                 currentUser?.id,
                 currentUser?.email,
                 currentUser?.username
             ].filter(Boolean);
 
-            if (possibleSenderIds.length === 0) {
-                // Không có user đăng nhập, không hiển thị gì
+            if (possibleRecipientIds.length === 0) {
                 setMessages([]);
                 setTotalCount(0);
                 setLoading(false);
                 return;
             }
 
-            // Đếm tổng số tin nhắn của user hiện tại
+            // Đếm tổng số tin nhắn đã đọc của student hiện tại
             const { count } = await supabase
                 .from("messages")
                 .select("*", { count: 'exact', head: true })
-                .in('sender_id', possibleSenderIds);
+                .in('recipient_id', possibleRecipientIds)
+                .not('read_at', 'is', null); // Chỉ lấy tin đã đọc
 
             setTotalCount(count || 0);
 
@@ -53,7 +52,8 @@ export default function HistoryListPage() {
             const { data, error } = await supabase
                 .from("messages")
                 .select("*")
-                .in('sender_id', possibleSenderIds)
+                .in('recipient_id', possibleRecipientIds)
+                .not('read_at', 'is', null)
                 .order("created_at", { ascending: false })
                 .range(from, to);
 
@@ -96,26 +96,21 @@ export default function HistoryListPage() {
 
     // Xử lý xem chi tiết tin nhắn
     const handleViewDetail = (id) => {
-        navigate(`/teacher/message/${id}`);
-    };
-
-    // Xử lý đặt nhắc nhở
-    const handleSetReminder = (id) => {
-        navigate(`/teacher/reminder/${id}`);
+        navigate(`/student/message/${id}`);
     };
 
     if (loading) {
         return (
-            <TeacherLayout title={t('history.title')}>
+            <StudentLayout title={t('studentHistory.title')}>
                 <div className="text-center py-10 text-gray-500">
                     {t('common.loading')}
                 </div>
-            </TeacherLayout>
+            </StudentLayout>
         );
     }
 
     return (
-        <TeacherLayout title={t('history.title')}>
+        <StudentLayout title={t('studentHistory.title')}>
             <div className="space-y-4">
                 {/* Bảng danh sách tin nhắn */}
                 <div className="overflow-x-auto bg-white rounded-lg shadow">
@@ -123,19 +118,19 @@ export default function HistoryListPage() {
                         <thead>
                             <tr className="bg-gray-50 border-b-2 border-gray-200">
                                 <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">
-                                    {t('history.subject')}
+                                    {t('studentHistory.subject')}
                                 </th>
                                 <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">
-                                    {t('history.recipient')}
+                                    {t('studentHistory.sender')}
                                 </th>
                                 <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">
-                                    {t('history.send_date')}
+                                    {t('studentHistory.received_date')}
                                 </th>
                                 <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">
-                                    {t('history.status')}
+                                    {t('studentHistory.read_date')}
                                 </th>
                                 <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm uppercase tracking-wide">
-                                    {t('history.action')}
+                                    {t('studentHistory.action')}
                                 </th>
                             </tr>
                         </thead>
@@ -143,7 +138,7 @@ export default function HistoryListPage() {
                             {messages.length === 0 ? (
                                 <tr>
                                     <td colSpan="5" className="py-10 text-center text-gray-500">
-                                        {t('common.no_messages')}
+                                        {t('studentHistory.no_read_messages')}
                                     </td>
                                 </tr>
                             ) : (
@@ -160,7 +155,7 @@ export default function HistoryListPage() {
                                                     <span className="font-medium text-gray-900">{msg.title}</span>
                                                     {msg.is_complex && (
                                                         <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">
-                                                            {t('history.complex')}
+                                                            {t('studentHistory.complex')}
                                                         </span>
                                                     )}
                                                 </div>
@@ -168,36 +163,22 @@ export default function HistoryListPage() {
                                         </td>
                                         <td className="py-4 px-6">
                                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                                                {msg.recipient_id}
+                                                {msg.sender_id}
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 text-gray-600 text-sm">
                                             {new Date(msg.created_at).toLocaleString("ja-JP")}
                                         </td>
-                                        <td className="py-4 px-6">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                                                msg.status === '既読' || msg.read_at
-                                                    ? 'bg-green-100 text-green-800' 
-                                                    : 'bg-yellow-100 text-yellow-800'
-                                            }`}>
-                                                {msg.status === '既読' || msg.read_at ? t('history.read') : t('history.unread')}
-                                            </span>
+                                        <td className="py-4 px-6 text-gray-600 text-sm">
+                                            {msg.read_at ? new Date(msg.read_at).toLocaleString("ja-JP") : '-'}
                                         </td>
                                         <td className="py-4 px-6">
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => handleViewDetail(msg.id)}
-                                                    className="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
-                                                >
-                                                    {t('common.detail')}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleSetReminder(msg.id)}
-                                                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
-                                                >
-                                                    {t('history.reminder')}
-                                                </button>
-                                            </div>
+                                            <button
+                                                onClick={() => handleViewDetail(msg.id)}
+                                                className="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                                            >
+                                                {t('common.detail')}
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -257,6 +238,6 @@ export default function HistoryListPage() {
                     </div>
                 )}
             </div>
-        </TeacherLayout>
+        </StudentLayout>
     );
 }

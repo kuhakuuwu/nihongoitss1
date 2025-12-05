@@ -1,49 +1,33 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AuthLayout from '../components/Layout/AuthLayout';
 import { supabase } from '../supabaseClient';
-import { getLanguage } from "../utils/language";
 
 export default function LoginPage() {
-    const [lang] = useState(() => getLanguage());  
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-    const TEXT = {
-        jp: {
-            title: "ログイン",
-            email: "メールアドレス",
-            email_placeholder: "メールアドレスを入力",
-            password: "パスワード",
-            password_placeholder: "パスワードを入力",
-            login: "ログイン",
-            loading: "処理中...",
-            error: "メールまたはパスワードが正しくありません。"
-        },
-        vn: {
-            title: "Đăng nhập",
-            email: "Email",
-            email_placeholder: "Nhập email",
-            password: "Mật khẩu",
-            password_placeholder: "Nhập mật khẩu",
-            login: "Đăng nhập",
-            loading: "Đang xử lý...",
-            error: "Email hoặc mật khẩu không đúng."
-        }
-    }[lang];
 
     const handleLogin = async () => {
         setError('');
         setLoading(true);
 
         if (!email || !password) {
-            setError(TEXT.error);
+            setError(t('login.error'));
             setLoading(false);
             return;
         }
 
         try {
+            // Debug: Kiểm tra user có tồn tại không
+            const { data: checkUser } = await supabase
+                .from('users')
+                .select('id, username, email, role, password')
+                .eq('email', email);
+            console.log('Users with this email:', checkUser);
+
             const { data, error } = await supabase
                 .from('users')
                 .select('id, username, email, role, password')
@@ -51,8 +35,11 @@ export default function LoginPage() {
                 .eq('password', password)
                 .single();
 
+            console.log('Login response:', { data, error });
+
             if (error || !data) {
-                setError(TEXT.error);
+                console.error('Login failed:', error);
+                setError(t('login.error'));
                 return;
             }
 
@@ -68,7 +55,7 @@ export default function LoginPage() {
 
         } catch (err) {
             console.error(err);
-            setError(TEXT.error);
+            setError(t('login.error'));
         } finally {
             setLoading(false);
         }
@@ -79,13 +66,13 @@ export default function LoginPage() {
     };
 
     return (
-        <AuthLayout title={TEXT.title} hideUserInfo={true}>
+        <AuthLayout title={t('login.title')} hideUserInfo={true}>
             <div className="space-y-6">
 
                 {/* EMAIL */}
                 <div>
                     <label className="block text-sm font-medium mb-2">
-                        {TEXT.email}
+                        {t('login.email')}
                     </label>
                     <input
                         type="text"
@@ -93,14 +80,14 @@ export default function LoginPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         onKeyDown={handleEnter}
                         className="w-full px-4 py-3 border rounded-md"
-                        placeholder={TEXT.email_placeholder}
+                        placeholder={t('login.email_placeholder')}
                     />
                 </div>
 
                 {/* PASSWORD */}
                 <div>
                     <label className="block text-sm font-medium mb-2">
-                        {TEXT.password}
+                        {t('login.password')}
                     </label>
                     <input
                         type="password"
@@ -108,7 +95,7 @@ export default function LoginPage() {
                         onChange={(e) => setPassword(e.target.value)}
                         onKeyDown={handleEnter}
                         className="w-full px-4 py-3 border rounded-md"
-                        placeholder={TEXT.password_placeholder}
+                        placeholder={t('login.password_placeholder')}
                     />
                 </div>
 
@@ -125,8 +112,18 @@ export default function LoginPage() {
                     disabled={loading}
                     className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-md disabled:opacity-50"
                 >
-                    {loading ? TEXT.loading : TEXT.login}
+                    {loading ? t('common.loading') : t('login.login')}
                 </button>
+
+                {/* REGISTER LINK */}
+                <div className="text-center">
+                    <a
+                        href="/register"
+                        className="text-green-600 hover:text-green-700 text-sm"
+                    >
+                        {t('login.register_link')}
+                    </a>
+                </div>
             </div>
         </AuthLayout>
     );

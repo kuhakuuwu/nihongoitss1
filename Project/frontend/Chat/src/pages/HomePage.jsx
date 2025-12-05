@@ -1,46 +1,60 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import AuthLayout from "../components/Layout/AuthLayout";
-import { getLanguage } from "../utils/language";
+import { changeLanguage, getCurrentLanguage } from "../i18n";
 
 import Logo from "../assets/logo.svg";
 
 export default function HomePage() {
     const navigate = useNavigate();
-    const [lang] = useState(() => getLanguage());
+    const { t, i18n } = useTranslation();
 
-    const JP_TEXT = {
-        title: "EduConnect",
-        desc: "返信期限・既読確認・自動リマインドと学生の返信支援で、授業連絡を確実に。",
-        login: "ログイン"
+    const handleLanguageChange = (lang) => {
+        changeLanguage(lang);
     };
-
-    const VN_TEXT = {
-        title: "EduConnect",
-        desc: "Hỗ trợ phản hồi, xác nhận đã đọc và nhắc nhở tự động để đảm bảo liên lạc học tập hiệu quả.",
-        login: "Đăng nhập"
-    };
-
-    const TEXT = lang === "jp" ? JP_TEXT : VN_TEXT;
 
     const handleLogin = () => navigate("/login");
 
     return (
-        <AuthLayout title={TEXT.title} hideUserInfo={true}>
+        <AuthLayout title={t('home.title')} hideUserInfo={true}>
             <div className="space-y-6">
 
+                {/* LANGUAGE SELECTOR */}
+                <div className="flex justify-center gap-4 mb-4">
+                    <button
+                        onClick={() => handleLanguageChange('jp')}
+                        className={`px-4 py-2 rounded-md border-2 transition-all ${
+                            i18n.language === 'jp' 
+                                ? 'border-green-600 bg-green-50 text-green-700' 
+                                : 'border-gray-300 hover:border-green-400'
+                        }`}
+                    >
+                        🇯🇵 日本語
+                    </button>
+                    <button
+                        onClick={() => handleLanguageChange('vn')}
+                        className={`px-4 py-2 rounded-md border-2 transition-all ${
+                            i18n.language === 'vn' 
+                                ? 'border-green-600 bg-green-50 text-green-700' 
+                                : 'border-gray-300 hover:border-green-400'
+                        }`}
+                    >
+                        🇻🇳 Tiếng Việt
+                    </button>
+                </div>
+
                 {/* INTRO TEXT */}
-                <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-line">
-                    {TEXT.desc}
+                <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-line text-center">
+                    {t('home.desc')}
                 </p>
 
                 {/* ONLY LOGIN BUTTON */}
-                <div className="flex mt-6">
+                <div className="flex justify-center mt-6">
                     <button
                         onClick={handleLogin}
-                        className="bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-md"
+                        className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-md text-lg"
                     >
-                        {TEXT.login}
+                        {t('home.login')}
                     </button>
                 </div>
 

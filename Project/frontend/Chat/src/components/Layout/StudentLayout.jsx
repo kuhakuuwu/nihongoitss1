@@ -1,14 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Header from './Header';
 
 
 export default function StudentLayout({ children, title }) {
+    const { t } = useTranslation();
     const location = useLocation();
     
     // Sidebar items configuration
     const sidebarItems = [
-        { name: '新着メッセージ', path: '/student' },
-        { name: '既読メッセージ', path: '/student/history' },
+        { name: t('sidebar.new_messages'), path: '/student' },
+        { name: t('sidebar.read_messages'), path: '/student/history' },
     ];
 
     return (
@@ -19,7 +21,7 @@ export default function StudentLayout({ children, title }) {
                 {/* Sidebar */}
                 <aside className="w-64 bg-white border-r border-gray-200 hidden md:block">
                     <div className="py-6">
-                        <h2 className="text-lg font-bold text-gray-800 mb-4 px-6">ダッシュボード</h2>
+                        <h2 className="text-lg font-bold text-gray-800 mb-4 px-6">{t('sidebar.dashboard')}</h2>
                         <nav className="space-y-1">
                             {sidebarItems.map((item) => {
                                 const isActive = location.pathname === item.path;
