@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Bell } from 'lucide-react';
 import logo from '../../assets/logo.svg';
 import { changeLanguage } from '../../i18n';
 import { supabase } from '../../supabaseClient';
@@ -59,15 +60,17 @@ export default function Header({ hideUserInfo = false }) {
 
   const loadNotifications = async () => {
     try {
-      // Thông báo chỉ dùng cho học sinh
-      if (!user || user.role !== 'student') return;
+      // Thông báo dùng cho cả học sinh và giáo viên
+      if (!user || !['student', 'teacher'].includes(user.role)) return;
 
       const recipientId = user.username;
 
+      // Query tin nhắn nhận được, loại trừ các reaction
       const { data, error } = await supabase
         .from('messages')
         .select('id, title, status, sender_id, created_at')
         .eq('recipient_id', recipientId)
+        .neq('title', '[REACTION]') // Loại trừ reaction
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -129,7 +132,7 @@ export default function Header({ hideUserInfo = false }) {
   };
 
   const handleMarkAllRead = async () => {
-    if (!user || user.role !== 'student') return;
+    if (!user || !['student', 'teacher'].includes(user.role)) return;
     const unreadIds = notifications.filter((n) => n.status === '未読').map((n) => n.id);
     if (unreadIds.length === 0) return;
 
@@ -163,7 +166,8 @@ export default function Header({ hideUserInfo = false }) {
   }, [user?.username, user?.role]);
 
   useEffect(() => {
-    if (!user || user.role !== 'student') return;
+    // Realtime notifications cho cả student và teacher
+    if (!user || !['student', 'teacher'].includes(user.role)) return;
 
     const recipientId = user.username;
 
@@ -179,6 +183,10 @@ export default function Header({ hideUserInfo = false }) {
         },
         (payload) => {
           const m = payload.new;
+          
+          // Bỏ qua reaction notifications
+          if (m.title === '[REACTION]') return;
+          
           const newNotification = {
             id: m.id,
             title: m.title,
@@ -263,7 +271,7 @@ export default function Header({ hideUserInfo = false }) {
                   onClick={() => setShowNotifications((prev) => !prev)}
                   aria-label={t('header.notifications')}
                 >
-                  🔔
+                  <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full border-2 border-white">
                       {unreadCount}

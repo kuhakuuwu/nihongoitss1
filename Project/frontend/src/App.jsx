@@ -4,6 +4,7 @@ import AddUserPage from './pages/AddUserPage'
 import TeacherMainPage from './pages/TeacherMainPage'
 import StudentMainPage from './pages/StudentMainPage'
 import CreateMessagePage from './pages/CreateMessagePage'
+import CreateReplyPage from './pages/CreateReplyPage'
 import MessageDetailPage from './pages/MessageDetailPage'
 import ReminderSettingsPage from './pages/ReminderSettingsPage'
 import SendCompletePage from './pages/SendCompletePage'
@@ -38,6 +39,7 @@ function App() {
 
         {/* Student */}
         <Route path="/student" element={<StudentMainPage />} />
+        <Route path="/student/reply/:id" element={<CreateReplyPage />} />
         <Route path="/student/history" element={<StudentHistoryPage />} />
         <Route path="/student/message/:id" element={<MessageDetailPage />} />
 

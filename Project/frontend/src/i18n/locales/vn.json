@@ -1,14 +1,9 @@
 {
   "header": {
     "user": "Người dùng",
-  "view_profile": "Xem hồ sơ",
-  "change_password": "Đổi mật khẩu",
-  "logout": "Đăng xuất",
-
-  "notifications": "Thông báo",
-  "no_notifications": "Chưa có thông báo nào",
-  "mark_all_read": "Đánh dấu tất cả đã đọc",
-  "new_message_toast": "Bạn có tin nhắn mới"
+    "view_profile": "Xem hồ sơ",
+    "change_password": "Đổi mật khẩu",
+    "logout": "Đăng xuất"
   },
   "sidebar": {
     "dashboard": "Bảng điều khiển",
@@ -135,8 +130,7 @@
     "recipient_label": "Người nhận",
     "send_date": "Ngày gửi",
     "status": "Trạng thái",
-    "not_found": "Không tìm thấy tin nhắn.",
-    "open_message": "Xem chi tiết tin nhắn"
+    "not_found": "Không tìm thấy tin nhắn."
   },
   "addUser": {
     "title": "Thêm người dùng (Học sinh/Giáo viên)",
@@ -191,11 +185,7 @@
     "read": "Đã đọc",
     "unread": "Chưa đọc",
     "reminder": "Nhắc nhở",
-    "complex": "Phức tạp",
-    "back_home": "Về trang chủ",
-    "new_message": "Tạo tin nhắn mới",
-    "refresh": "Làm mới danh sách"
-
+    "complex": "Phức tạp"
   },
   "studentHistory": {
     "title": "Tin nhắn đã đọc",
@@ -206,6 +196,33 @@
     "action": "Thao tác",
     "no_read_messages": "Không có tin nhắn đã đọc",
     "complex": "Phức tạp"
+  },
+  "reply": {
+    "title": "Tạo phản hồi",
+    "loading": "Đang tải...",
+    "not_found": "Không tìm thấy tin nhắn",
+    "back_to_list": "Quay lại danh sách tin nhắn",
+    "sender": "Người gửi",
+    "recipient": "Người nhận",
+    "you": "Bạn",
+    "datetime": "Thời gian",
+    "create_reply": "Tạo phản hồi",
+    "ai_selected": "Đã chọn gợi ý AI",
+    "clear": "Xóa",
+    "placeholder": "Nhập nội dung phản hồi...",
+    "send_reply": "Gửi phản hồi",
+    "sending": "Đang gửi...",
+    "back": "Quay lại",
+    "ai_suggestions": "Gợi ý phản hồi AI",
+    "reply_suggestions": "Gợi ý phản hồi:",
+    "reaction_suggestions": "Gợi ý phản ứng:",
+    "use": "Sử dụng",
+    "cancel": "Hủy",
+    "use_this_reply": "Sử dụng phản hồi này",
+    "input_required": "Vui lòng nhập nội dung phản hồi",
+    "send_success": "Đã gửi phản hồi",
+    "send_failed": "Gửi phản hồi thất bại",
+    "error_occurred": "Đã xảy ra lỗi"
   },
   "systemSettings": {
     "title": "Cài đặt hệ thống",

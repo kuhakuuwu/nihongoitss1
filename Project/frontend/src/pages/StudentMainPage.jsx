@@ -121,7 +121,10 @@ export default function StudentMainPage() {
 >
                                             {t('common.detail')}
                                         </button>
-                                        <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm shadow-sm">
+                                        <button 
+                                            onClick={() => navigate(`/student/reply/${message.id}`)}
+                                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm shadow-sm"
+                                        >
                                             {t('common.reply')}
                                         </button>
                                     </div>

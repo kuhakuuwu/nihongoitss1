@@ -1,14 +1,9 @@
 {
   "header": {
-  "user": "ユーザー",
-  "view_profile": "プロフィール確認",
-  "change_password": "パスワード変更",
-  "logout": "ログアウト",
-
-  "notifications": "通知",
-  "no_notifications": "新しい通知はありません",
-  "mark_all_read": "すべて既読にする",
-  "new_message_toast": "新しいメッセージが届きました"
+    "user": "ユーザー",
+    "view_profile": "プロフィール確認",
+    "change_password": "パスワード変更",
+    "logout": "ログアウト"
   },
   "sidebar": {
     "dashboard": "ダッシュボード",
@@ -135,8 +130,7 @@
     "recipient_label": "宛先",
     "send_date": "送信日時",
     "status": "状態",
-    "not_found": "メッセージが見つかりません。",
-    "open_message": "メッセージを開く"
+    "not_found": "メッセージが見つかりません。"
   },
   "addUser": {
     "title": "ユーザー追加（学生・教師）",
@@ -191,10 +185,7 @@
     "read": "既読",
     "unread": "未読",
     "reminder": "リマインド",
-    "complex": "複雑",
-    "back_home": "ホームに戻る",
-    "new_message": "新しいメッセージ",
-    "refresh": "リストを更新"
+    "complex": "複雑"
   },
   "studentHistory": {
     "title": "既読メッセージ",
@@ -205,6 +196,33 @@
     "action": "操作",
     "no_read_messages": "既読メッセージがありません",
     "complex": "複雑"
+  },
+  "reply": {
+    "title": "返信作成",
+    "loading": "読み込み中...",
+    "not_found": "メッセージが見つかりません",
+    "back_to_list": "メッセージ一覧へ戻る",
+    "sender": "送信者",
+    "recipient": "受信者",
+    "you": "あなた",
+    "datetime": "日時",
+    "create_reply": "返信を作成",
+    "ai_selected": "AI候補を選択中",
+    "clear": "クリア",
+    "placeholder": "返信内容を入力してください...",
+    "send_reply": "返信を送信",
+    "sending": "送信中...",
+    "back": "戻る",
+    "ai_suggestions": "AI返信候補",
+    "reply_suggestions": "返信候補：",
+    "reaction_suggestions": "リアクション候補：",
+    "use": "使用",
+    "cancel": "キャンセル",
+    "use_this_reply": "この返信を使用",
+    "input_required": "返信内容を入力してください",
+    "send_success": "返信を送信しました",
+    "send_failed": "返信の送信に失敗しました",
+    "error_occurred": "エラーが発生しました"
   },
   "systemSettings": {
     "title": "システム設定",
