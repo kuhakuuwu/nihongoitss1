@@ -217,12 +217,17 @@ export default function CreateReplyPage() {
                         {/* Attachment */}
                         {message.attachment && (
                             <div className="mb-4">
-                                <button className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200">
+                                <a 
+                                    href={message.attachment}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors border border-blue-200"
+                                >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                                     </svg>
-                                    {message.attachment}
-                                </button>
+                                    {message.attachment.split('/').pop().split('?')[0] || 'Tệp đính kèm'}
+                                </a>
                             </div>
                         )}
 

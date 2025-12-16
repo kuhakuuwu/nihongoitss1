@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import StudentLayout from "../components/Layout/StudentLayout";
 import { supabase } from "../supabaseClient";
@@ -8,7 +8,14 @@ import { supabase } from "../supabaseClient";
 export default function StudentMainPage() {
     const { t } = useTranslation();
     const [messages, setMessages] = useState([]);
+    const [repliedMessageIds, setRepliedMessageIds] = useState(new Set());
     const navigate = useNavigate();
+    const location = useLocation();
+    
+    // Lấy tab từ URL query params
+    const searchParams = new URLSearchParams(location.search);
+    const activeTab = searchParams.get('tab') || 'unanswered';
+    
     const handleViewDetail = async (msgId) => {
     // Update trạng thái thành 既読
     await supabase
@@ -27,13 +34,28 @@ export default function StudentMainPage() {
 
             const studentId = studentData.username; // VD: student001
 
+            // Lấy tất cả tin nhắn của student
             const { data, error } = await supabase
                 .from("messages")
                 .select("*")
                 .eq("recipient_id", studentId)
+                .is("parent_id", null) // Chỉ lấy tin nhắn gốc, không lấy replies
                 .order("created_at", { ascending: false });
 
             if (!error && data) {
+                // Lấy danh sách các tin nhắn đã reply
+                const { data: repliesData } = await supabase
+                    .from("messages")
+                    .select("parent_id")
+                    .eq("sender_id", studentId)
+                    .not("parent_id", "is", null);
+
+                // Tạo Set các message IDs đã được reply
+                const repliedIds = new Set(
+                    repliesData ? repliesData.map(r => r.parent_id) : []
+                );
+                setRepliedMessageIds(repliedIds);
+
                 // Format lại dữ liệu để đưa vào UI
                 const formatted = data.map((m) => ({
                     id: m.id,
@@ -41,7 +63,8 @@ export default function StudentMainPage() {
                     sender: m.sender_id,
                     date: new Date(m.created_at).toLocaleDateString("ja-JP"),
                     status: m.status,
-                    color: "bg-blue-200"
+                    color: "bg-blue-200",
+                    hasReplied: repliedIds.has(m.id)
                 }));
 
                 setMessages(formatted);
@@ -66,15 +89,22 @@ export default function StudentMainPage() {
                     </thead>
 
                     <tbody className="divide-y divide-gray-200">
-                        {messages.length === 0 && (
+                        {messages.filter(m => 
+                            activeTab === 'unanswered' ? !m.hasReplied : m.hasReplied
+                        ).length === 0 && (
                             <tr>
                                 <td colSpan="5" className="text-center py-6 text-gray-500">
-                                    {t('common.no_messages')}
+                                    {activeTab === 'unanswered' 
+                                        ? t('student.no_unanswered_messages')
+                                        : t('student.no_answered_messages')
+                                    }
                                 </td>
                             </tr>
                         )}
 
-                        {messages.map((message) => (
+                        {messages
+                            .filter(m => activeTab === 'unanswered' ? !m.hasReplied : m.hasReplied)
+                            .map((message) => (
                             <tr key={message.id} className="hover:bg-gray-50 transition-colors">
 
                                 {/* 件名 */}

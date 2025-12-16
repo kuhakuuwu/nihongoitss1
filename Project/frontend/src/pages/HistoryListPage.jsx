@@ -10,7 +10,6 @@ import {
   PenSquare, 
   RefreshCw, 
   Eye, 
-  Bell, 
   ChevronLeft, 
   ChevronRight,
   Mail,
@@ -119,7 +118,6 @@ export default function HistoryListPage() {
   // ACTIONS
   // ================================================
   const handleViewDetail = (id) => navigate(`/teacher/message/${id}`);
-  const handleSetReminder = (id) => navigate(`/teacher/reminder/${id}`);
 
   // ================================================
   // UI
@@ -288,22 +286,13 @@ export default function HistoryListPage() {
 
                       {/* ACTIONS */}
                       <td className="py-4 px-6">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleViewDetail(msg.id)}
-                            className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center gap-1.5 font-medium"
-                          >
-                            <Eye className="w-4 h-4" />
-                            {t("common.detail")}
-                          </button>
-                          <button
-                            onClick={() => handleSetReminder(msg.id)}
-                            className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors flex items-center gap-1.5 font-medium"
-                          >
-                            <Bell className="w-4 h-4" />
-                            {t("history.reminder")}
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleViewDetail(msg.id)}
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center gap-1.5 font-medium"
+                        >
+                          <Eye className="w-4 h-4" />
+                          {t("common.detail")}
+                        </button>
                       </td>
                     </tr>
                   ))

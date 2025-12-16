@@ -13,8 +13,10 @@ export default function CreateMessagePage() {
     // Lấy recipientId từ state nếu được truyền từ TeacherMainPage
     const preSelectedRecipient = location.state?.recipientId || "";
     
-    const [recipient, setRecipient] = useState(preSelectedRecipient);
+    const [selectedRecipients, setSelectedRecipients] = useState(preSelectedRecipient ? [preSelectedRecipient] : []);
     const [students, setStudents] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showDropdown, setShowDropdown] = useState(false);
 
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
@@ -22,6 +24,13 @@ export default function CreateMessagePage() {
 
     const [isComplexMessage, setIsComplexMessage] = useState(false);
     const [requireConfirmation, setRequireConfirmation] = useState(false);
+
+    // Reminder settings
+    const [enableReminder, setEnableReminder] = useState(false);
+    const [reminderOption, setReminderOption] = useState("1hour");
+    const [customReminderDate, setCustomReminderDate] = useState("");
+    const [customReminderTime, setCustomReminderTime] = useState("");
+    const [reminderMemo, setReminderMemo] = useState("");
 
     // Recent messages
     const [recentMessages, setRecentMessages] = useState([]);
@@ -66,6 +75,12 @@ export default function CreateMessagePage() {
     // ============================================================
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (selectedRecipients.length === 0) {
+            alert(t('message.select_recipient_required'));
+            return;
+        }
+        
         setSending(true);
 
         const teacher = JSON.parse(localStorage.getItem("user"));
@@ -75,44 +90,169 @@ export default function CreateMessagePage() {
             return;
         }
 
-        const payload = {
-            sender_id: teacher.username,
-            recipient_id: recipient,
-            title,
-            content,
-            status: "未読",
-            is_complex: isComplexMessage,
-            require_confirmation: requireConfirmation,
-        };
+        try {
+            // Upload file nếu có
+            let uploadedFileUrl = null;
+            if (attachment) {
+                // Lấy extension đúng từ tên file
+                const fileExt = attachment.name.split('.').pop() || 'file';
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const filePath = `attachments/${fileName}`;
 
-        const { data, error } = await supabase
-            .from("messages")
-            .insert(payload)
-            .select("*");
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('message-attachments')
+                    .upload(filePath, attachment, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
 
-        if (error) {
-            console.error(error);
+                if (uploadError) {
+                    console.error('Upload error:', uploadError);
+                    alert(t('message.upload_failed'));
+                    setSending(false);
+                    return;
+                }
+
+                const { data: urlData } = supabase.storage
+                    .from('message-attachments')
+                    .getPublicUrl(filePath);
+                
+                uploadedFileUrl = urlData.publicUrl;
+            }
+
+            // Tạo tin nhắn chính
+            const payload = {
+                sender_id: teacher.username,
+                recipient_id: selectedRecipients.join(','), // Lưu danh sách để backward compatible
+                title,
+                content,
+                status: "未読",
+                is_complex: isComplexMessage,
+                require_confirmation: requireConfirmation,
+                attachment_url: uploadedFileUrl,
+            };
+
+            const { data: messageData, error: messageError } = await supabase
+                .from("messages")
+                .insert(payload)
+                .select("*")
+                .single();
+
+            if (messageError) {
+                console.error(messageError);
+                alert(t('common.send_failed'));
+                setSending(false);
+                return;
+            }
+
+            // Lấy user IDs của các recipients
+            const { data: recipientUsers, error: userError } = await supabase
+                .from('users')
+                .select('id, username')
+                .in('username', selectedRecipients);
+
+            if (!userError && recipientUsers) {
+                // Tạo records trong message_recipients
+                const recipientRecords = recipientUsers.map(user => ({
+                    message_id: messageData.id,
+                    recipient_id: user.id,
+                    status: '未読',
+                }));
+
+                await supabase
+                    .from('message_recipients')
+                    .insert(recipientRecords);
+            }
+
+            // Lưu attachment vào bảng attachments nếu có
+            if (uploadedFileUrl && attachment) {
+                await supabase
+                    .from('attachments')
+                    .insert({
+                        message_id: messageData.id,
+                        file_name: attachment.name,
+                        file_url: uploadedFileUrl,
+                        file_type: attachment.type,
+                        file_size: attachment.size,
+                    });
+            }
+
+            // Tạo reminder nếu được bật
+            if (enableReminder && recipientUsers && recipientUsers.length > 0) {
+                const reminderDateTime = calculateReminderDateTime();
+                
+                if (reminderDateTime) {
+                    const reminderRecords = recipientUsers.map(user => ({
+                        message_id: messageData.id,
+                        student_id: user.username,
+                        teacher_id: teacher.username,
+                        reminder_datetime: reminderDateTime.toISOString(),
+                        remind_on_no_reply: true,
+                        memo: reminderMemo,
+                        is_sent: false,
+                    }));
+
+                    await supabase
+                        .from('reminders')
+                        .insert(reminderRecords);
+                }
+            }
+
+            // Thêm tin mới vào recentMessages
+            setRecentMessages((prev) => [messageData, ...prev]);
+
+            // Reset form
+            setSelectedRecipients([]);
+            setSearchQuery("");
+            setTitle("");
+            setContent("");
+            setAttachment(null);
+            setIsComplexMessage(false);
+            setRequireConfirmation(false);
+            setEnableReminder(false);
+            setReminderOption("1hour");
+            setCustomReminderDate("");
+            setCustomReminderTime("");
+            setReminderMemo("");
+            setSending(false);
+
+            // Navigate to send complete page
+            navigate('/teacher/send-complete');
+        } catch (error) {
+            console.error('Error sending message:', error);
             alert(t('common.send_failed'));
             setSending(false);
-            return;
         }
+    };
 
-        // Thêm tin mới vào recentMessages
-        if (data && data.length > 0) {
-            setRecentMessages((prev) => [data[0], ...prev]);
+    // Calculate reminder datetime based on option
+    const calculateReminderDateTime = () => {
+        const now = new Date();
+
+        switch (reminderOption) {
+            case "1hour": {
+                const dt = new Date(now);
+                dt.setHours(dt.getHours() + 1);
+                return dt;
+            }
+            case "tomorrow_morning": {
+                const dt = new Date(now);
+                dt.setDate(dt.getDate() + 1);
+                dt.setHours(9, 0, 0, 0);
+                return dt;
+            }
+            case "3days": {
+                const dt = new Date(now);
+                dt.setDate(dt.getDate() + 3);
+                return dt;
+            }
+            case "custom": {
+                if (!customReminderDate || !customReminderTime) return null;
+                return new Date(`${customReminderDate}T${customReminderTime}`);
+            }
+            default:
+                return null;
         }
-
-        // Reset form
-        setRecipient("");
-        setTitle("");
-        setContent("");
-        setAttachment(null);
-        setIsComplexMessage(false);
-        setRequireConfirmation(false);
-        setSending(false);
-
-        // Navigate to send complete page
-        navigate('/teacher/send-complete');
     };
 
     // Xử lý hủy
@@ -127,6 +267,30 @@ export default function CreateMessagePage() {
         }
         return student.username;
     };
+
+    // Toggle recipient selection
+    const toggleRecipient = (username) => {
+        setSelectedRecipients(prev => {
+            if (prev.includes(username)) {
+                return prev.filter(u => u !== username);
+            } else {
+                return [...prev, username];
+            }
+        });
+    };
+
+    // Remove recipient
+    const removeRecipient = (username) => {
+        setSelectedRecipients(prev => prev.filter(u => u !== username));
+    };
+
+    // Filter students based on search
+    const filteredStudents = students.filter(student => {
+        const displayName = getStudentDisplayName(student).toLowerCase();
+        const username = student.username.toLowerCase();
+        const query = searchQuery.toLowerCase();
+        return displayName.includes(query) || username.includes(query);
+    });
 
     // ============================================================
     // 3. UI
@@ -144,19 +308,91 @@ export default function CreateMessagePage() {
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 {t('message.recipient')} <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={recipient}
-                                onChange={(e) => setRecipient(e.target.value)}
-                                className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
-                                required
-                            >
-                                <option value="">{t('message.recipient_placeholder')}</option>
-                                {students.map((s) => (
-                                    <option key={s.id} value={s.username}>
-                                        {getStudentDisplayName(s)} {s.class ? `(${s.class})` : ''}
-                                    </option>
-                                ))}
-                            </select>
+                            
+                            {/* Selected Recipients Display */}
+                            {selectedRecipients.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {selectedRecipients.map(username => {
+                                        const student = students.find(s => s.username === username);
+                                        return (
+                                            <div 
+                                                key={username}
+                                                className="bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-sm flex items-center gap-2"
+                                            >
+                                                <span>{student ? getStudentDisplayName(student) : username}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeRecipient(username)}
+                                                    className="hover:text-green-900"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Search Input */}
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onFocus={() => setShowDropdown(true)}
+                                    placeholder={t('message.search_recipient_placeholder')}
+                                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                />
+                                
+                                {/* Dropdown List */}
+                                {showDropdown && searchQuery && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                        {filteredStudents.length > 0 ? (
+                                            filteredStudents.map((student) => (
+                                                <div
+                                                    key={student.id}
+                                                    onClick={() => {
+                                                        toggleRecipient(student.username);
+                                                        setSearchQuery("");
+                                                        setShowDropdown(false);
+                                                    }}
+                                                    className={`px-4 py-2.5 cursor-pointer hover:bg-green-50 flex items-center justify-between ${
+                                                        selectedRecipients.includes(student.username) ? 'bg-green-100' : ''
+                                                    }`}
+                                                >
+                                                    <div>
+                                                        <div className="font-medium text-gray-900">
+                                                            {getStudentDisplayName(student)}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">
+                                                            {student.username} {student.class ? `(${student.class})` : ''}
+                                                        </div>
+                                                    </div>
+                                                    {selectedRecipients.includes(student.username) && (
+                                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="px-4 py-2.5 text-gray-500 text-center">
+                                                {t('message.no_students_found')}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Click outside to close dropdown */}
+                            {showDropdown && (
+                                <div 
+                                    className="fixed inset-0 z-0"
+                                    onClick={() => setShowDropdown(false)}
+                                />
+                            )}
                         </div>
 
                         {/* TITLE */}
@@ -253,6 +489,72 @@ export default function CreateMessagePage() {
                                 />
                                 <span className="text-sm text-gray-700">{t('message.require_reply')}</span>
                             </label>
+                        </div>
+
+                        {/* REMINDER SETTINGS */}
+                        <div className="bg-blue-50 p-4 border border-blue-200 rounded-lg space-y-3">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={enableReminder}
+                                    onChange={(e) => setEnableReminder(e.target.checked)}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-semibold text-gray-700">{t('reminder.enable_reminder')}</span>
+                            </label>
+
+                            {enableReminder && (
+                                <div className="mt-3 space-y-3 pl-7">
+                                    {/* Reminder Options */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            {t('reminder.datetime_label')}
+                                        </label>
+                                        <select
+                                            value={reminderOption}
+                                            onChange={(e) => setReminderOption(e.target.value)}
+                                            className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="1hour">{t('reminder.option_1hour')}</option>
+                                            <option value="tomorrow_morning">{t('reminder.option_tomorrow')}</option>
+                                            <option value="3days">{t('reminder.option_3days')}</option>
+                                            <option value="custom">{t('reminder.option_custom')}</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Custom DateTime */}
+                                    {reminderOption === 'custom' && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <input
+                                                type="date"
+                                                value={customReminderDate}
+                                                onChange={(e) => setCustomReminderDate(e.target.value)}
+                                                className="border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <input
+                                                type="time"
+                                                value={customReminderTime}
+                                                onChange={(e) => setCustomReminderTime(e.target.value)}
+                                                className="border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Memo */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            {t('reminder.memo_label')}
+                                        </label>
+                                        <textarea
+                                            value={reminderMemo}
+                                            onChange={(e) => setReminderMemo(e.target.value)}
+                                            rows={2}
+                                            placeholder={t('reminder.memo_placeholder')}
+                                            className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* BUTTONS */}
