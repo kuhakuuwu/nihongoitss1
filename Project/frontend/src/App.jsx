@@ -16,6 +16,8 @@ import StudentHistoryPage from './pages/StudentHistoryPage'
 import SystemSettingsPage from './pages/SystemSettingsPage'
 import AdminMainPage from './pages/AdminMainPage'
 import HomePage from './pages/HomePage'
+import ClassListPage from './pages/ClassListPage'
+import ClassDetailPage from './pages/ClassDetailPage'
 import './index.css'
 
 function App() {
@@ -33,6 +35,8 @@ function App() {
         {/* Teacher */}
         <Route path="/teacher" element={<TeacherMainPage />} />
         <Route path="/teacher/add-user" element={<AddUserPage />} />
+        <Route path="/teacher/classes" element={<ClassListPage />} />
+        <Route path="/teacher/class/:id" element={<ClassDetailPage />} />
         <Route path="/teacher/create-message" element={<CreateMessagePage />} />
         <Route path="/teacher/message/:id" element={<MessageDetailPage />} />
         {/* SỬA Ở ĐÂY */}

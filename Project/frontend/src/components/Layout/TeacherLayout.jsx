@@ -10,6 +10,7 @@ export default function TeacherLayout({ children, title }) {
     // Sidebar items configuration
     const sidebarItems = [
         { name: t('sidebar.student_list'), path: '/teacher' },
+        { name: t('sidebar.class_management'), path: '/teacher/classes' },
         { name: t('sidebar.add_student'), path: '/teacher/add-user' },
         { name: t('sidebar.history'), path: '/teacher/history' },
         { name: t('sidebar.reminder'), path: '/teacher/reminder' },
