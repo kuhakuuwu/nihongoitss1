@@ -1,5 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
+import MigratePasswordsPage from './pages/MigratePasswordsPage'
 import AddUserPage from './pages/AddUserPage'
 import TeacherMainPage from './pages/TeacherMainPage'
 import StudentMainPage from './pages/StudentMainPage'
@@ -22,8 +25,10 @@ function App() {
         {/* Home */}
         <Route path="/" element={<HomePage />} />
 
-        {/* Login */}
+        {/* Login & Password */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/change-password" element={<ChangePasswordPage />} />
 
         {/* Teacher */}
         <Route path="/teacher" element={<TeacherMainPage />} />
@@ -47,6 +52,7 @@ function App() {
         <Route path="/admin" element={<AdminMainPage />} />
         <Route path="/add-user" element={<AddUserPage />} />
         <Route path="/admin/settings" element={<SystemSettingsPage />} />
+        <Route path="/admin/migrate-passwords" element={<MigratePasswordsPage />} />
       </Routes>
     </Router>
   );

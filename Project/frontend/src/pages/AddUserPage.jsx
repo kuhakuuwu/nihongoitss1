@@ -155,6 +155,9 @@ export default function AddUserPage() {
                 return;
             }
 
+            // Hash the temporary password before storing
+            const hashedPassword = await hashPassword(tempPassword);
+
             // Thêm user mới vào database
             const { data, error: insertError } = await supabase
                 .from('users')
@@ -162,7 +165,7 @@ export default function AddUserPage() {
                     {
                         username: name.trim(),
                         email: email,
-                        password: tempPassword,
+                        password: hashedPassword,
                         role: role,
                         user_code: userCode.trim(),
                         class: role === 'student' ? classValue : null

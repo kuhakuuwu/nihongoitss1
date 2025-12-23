@@ -398,7 +398,13 @@ export default function Header({ hideUserInfo = false }) {
                     </button>
 
                     {/* Change password */}
-                    <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100">
+                    <button 
+                      onClick={() => {
+                        setShowAccountMenu(false);
+                        navigate('/change-password');
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    >
                       {t('header.change_password')}
                     </button>
 

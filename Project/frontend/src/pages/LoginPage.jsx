@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AuthLayout from '../components/Layout/AuthLayout';
 import { supabase } from '../supabaseClient';
+import { verifyPassword, isPasswordHashed } from '../utils/passwordHash';
 
 export default function LoginPage() {
     const { t } = useTranslation();
@@ -34,8 +35,17 @@ export default function LoginPage() {
                 return;
             }
 
-            // ⭐ Kiểm tra password (vì bạn chưa dùng hash)
-            if (data.password !== password) {
+            // ⭐ Kiểm tra password (hỗ trợ cả hashed và plain text)
+            let passwordMatch = false;
+            if (isPasswordHashed(data.password)) {
+                // Nếu mật khẩu đã được hash, sử dụng verifyPassword
+                passwordMatch = await verifyPassword(password, data.password);
+            } else {
+                // Nếu mật khẩu chưa hash (backward compatibility)
+                passwordMatch = (data.password === password);
+            }
+
+            if (!passwordMatch) {
                 setError("メールまたはパスワードが正しくありません。");
                 setLoading(false);
                 return;
@@ -98,6 +108,16 @@ export default function LoginPage() {
                         className="w-full px-4 py-3 border rounded-md"
                         placeholder={t('login.password_placeholder')}
                     />
+                </div>
+
+                {/* FORGOT PASSWORD LINK */}
+                <div className="text-right">
+                    <a
+                        href="/forgot-password"
+                        className="text-green-600 hover:text-green-700 text-sm"
+                    >
+                        {t('login.forgot_password')}
+                    </a>
                 </div>
 
                 {/* ERROR */}
