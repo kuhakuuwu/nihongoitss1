@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next';
 import AuthLayout from '../components/Layout/AuthLayout';
 import { supabase } from '../supabaseClient';
 import { hashPassword } from '../utils/passwordHash';
+import { sendOtpEmail } from '../utils/emailService';
 
 export default function ForgotPasswordPage() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const navigate = useNavigate();
 
     // Step tracking: 1 = email, 2 = OTP, 3 = new password
@@ -56,15 +57,21 @@ export default function ForgotPasswordPage() {
             setGeneratedOtp(otpCode);
             setUserId(user.id);
 
-            // In a real application, send OTP via email service
-            // For now, we'll just log it and show success message
-            console.log('OTP Code:', otpCode, 'for email:', email);
-            
-            // TODO: Integrate with email service (Supabase Edge Functions, SendGrid, etc.)
-            // await sendEmailWithOtp(email, otpCode);
+            // Send OTP via email
+            const currentLanguage = i18n.language || 'vn';
+            const emailResult = await sendOtpEmail(email, otpCode, currentLanguage);
 
-            setSuccess(t('forgotPassword.success_otp_sent') + ` (Dev: ${otpCode})`);
-            setStep(2);
+            if (!emailResult.success) {
+                // If email fails, still show OTP in console for development
+                console.warn('Email sending failed, showing OTP in console for dev:', otpCode);
+                setSuccess(t('forgotPassword.success_otp_sent') + ` (Dev: ${otpCode})`);
+                setStep(2);
+            } else {
+                // Email sent successfully
+                console.log('OTP email sent successfully. MessageId:', emailResult.messageId);
+                setSuccess(t('forgotPassword.success_otp_sent'));
+                setStep(2);
+            }
         } catch (err) {
             console.error('Error sending OTP:', err);
             setError(t('common.send_failed'));
