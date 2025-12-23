@@ -11,9 +11,9 @@ export default function CreateMessagePage() {
     const location = useLocation();
     
     // Lấy recipientId từ state nếu được truyền từ TeacherMainPage
-    const preSelectedRecipient = location.state?.recipientId || "";
+    const preSelectedRecipientId = location.state?.recipientId || "";
     
-    const [selectedRecipients, setSelectedRecipients] = useState(preSelectedRecipient ? [preSelectedRecipient] : []);
+    const [selectedRecipients, setSelectedRecipients] = useState([]);
     const [students, setStudents] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [showDropdown, setShowDropdown] = useState(false);
@@ -73,6 +73,14 @@ export default function CreateMessagePage() {
             const { data, error } = await query;
             if (!error && data) {
                 setStudents(data);
+
+                // Nếu có preSelectedRecipientId, tìm username tương ứng và thêm vào selectedRecipients
+                if (preSelectedRecipientId) {
+                    const preSelectedStudent = data.find(s => s.id === preSelectedRecipientId);
+                    if (preSelectedStudent) {
+                        setSelectedRecipients([preSelectedStudent.username]);
+                    }
+                }
 
                 // Thử lấy danh sách lớp từ bảng `classes` nếu có (hiển thị đầy đủ tất cả các lớp)
                 try {
