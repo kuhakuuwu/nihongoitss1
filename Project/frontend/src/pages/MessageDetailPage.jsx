@@ -15,9 +15,11 @@ export default function MessageDetailPage() {
 
     const [message, setMessage] = useState(null);
     const [recipients, setRecipients] = useState([]);
+    const [recipientsStatus, setRecipientsStatus] = useState([]); // Tracking status từng người
     const [attachments, setAttachments] = useState([]);
     const [replies, setReplies] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
 
     // ✅ Lấy role từ localStorage
     const [role] = useState(() => {
@@ -49,10 +51,10 @@ export default function MessageDetailPage() {
             if (!error && data) {
                 setMessage(data);
                 
-                // Lấy danh sách recipients từ message_recipients
+                // Lấy danh sách recipients từ message_recipients với trạng thái
                 const { data: recipientData } = await supabase
                     .from("message_recipients")
-                    .select("recipient_id")
+                    .select("recipient_id, status, read_at, replied_at, is_late_reply")
                     .eq("message_id", id);
                 
                 if (recipientData && recipientData.length > 0) {
@@ -62,7 +64,21 @@ export default function MessageDetailPage() {
                         .select("id, username, first_name, last_name")
                         .in("id", recipientIds);
                     
-                    setRecipients(userData || []);
+                    // Kết hợp thông tin user với status
+                    if (userData) {
+                        const recipientsWithStatus = userData.map(user => {
+                            const statusInfo = recipientData.find(r => r.recipient_id === user.id);
+                            return {
+                                ...user,
+                                status: statusInfo?.status || '未読',
+                                read_at: statusInfo?.read_at,
+                                replied_at: statusInfo?.replied_at,
+                                is_late_reply: statusInfo?.is_late_reply || false
+                            };
+                        });
+                        setRecipients(recipientsWithStatus);
+                        setRecipientsStatus(recipientData);
+                    }
                 } else if (data.recipient_id) {
                     // Fallback: parse từ recipient_id text field
                     const recipientUsernames = data.recipient_id.split(',');
@@ -101,12 +117,67 @@ export default function MessageDetailPage() {
     const handleBack = () => {
         navigate(-1);
     };
+    
+    const handleDelete = async () => {
+        if (!window.confirm(t('message.confirm_delete'))) return;
+        
+        try {
+            const { error } = await supabase
+                .from('messages')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            
+            alert(t('message.delete_success'));
+            navigate('/teacher/history');
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert(t('message.delete_failed'));
+        }
+    };
+    
+    const handleSendReminder = async (type) => {
+        try {
+            let targetRecipients = [];
+            
+            if (type === 'unread') {
+                targetRecipients = recipients.filter(r => !r.read_at);
+            } else if (type === 'unreplied') {
+                targetRecipients = recipients.filter(r => !r.replied_at);
+            }
+            
+            if (targetRecipients.length === 0) {
+                alert(t('message.no_recipients_to_remind'));
+                return;
+            }
+            
+            // Gửi reminder (có thể tích hợp với email service)
+            console.log('Send reminder to:', targetRecipients);
+            alert(t('message.reminder_sent'));
+        } catch (error) {
+            console.error('Reminder error:', error);
+        }
+    };
 
     const getRecipientDisplayName = (recipient) => {
         if (recipient.first_name && recipient.last_name) {
             return `${recipient.last_name} ${recipient.first_name}`;
         }
         return recipient.username;
+    };
+    
+    const getStatusBadge = (recipient) => {
+        if (recipient.replied_at) {
+            if (recipient.is_late_reply) {
+                return <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium">{t('message.late_reply_status')}</span>;
+            }
+            return <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">{t('message.replied_status')}</span>;
+        }
+        if (recipient.read_at) {
+            return <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">{t('message.read_status')}</span>;
+        }
+        return <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium">{t('message.unread_status')}</span>;
     };
 
     if (loading) {
@@ -153,6 +224,66 @@ export default function MessageDetailPage() {
                                 ))}
                             </div>
                         </div>
+                        
+                        {/* RECIPIENT STATUS TABLE - Only for teacher */}
+                        {role === "teacher" && recipients.length > 0 && (
+                            <div className="mt-4">
+                                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                    </svg>
+                                    {t('message.recipient_status')}
+                                </h3>
+                                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="py-2 px-4 text-left font-medium text-gray-600">{t('message.recipient')}</th>
+                                                <th className="py-2 px-4 text-left font-medium text-gray-600">{t('message.status')}</th>
+                                                <th className="py-2 px-4 text-left font-medium text-gray-600">{t('message.read_date')}</th>
+                                                <th className="py-2 px-4 text-left font-medium text-gray-600">{t('message.reply_time')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {recipients.map(recipient => (
+                                                <tr key={recipient.id} className="hover:bg-gray-50">
+                                                    <td className="py-2 px-4 text-gray-900 font-medium">
+                                                        {getRecipientDisplayName(recipient)}
+                                                    </td>
+                                                    <td className="py-2 px-4">
+                                                        {getStatusBadge(recipient)}
+                                                    </td>
+                                                    <td className="py-2 px-4 text-gray-600">
+                                                        {recipient.read_at ? new Date(recipient.read_at).toLocaleString("ja-JP") : '-'}
+                                                    </td>
+                                                    <td className="py-2 px-4 text-gray-600">
+                                                        {recipient.replied_at ? new Date(recipient.replied_at).toLocaleString("ja-JP") : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                {/* Reminder buttons */}
+                                <div className="flex gap-2 mt-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSendReminder('unread')}
+                                        className="px-3 py-2 bg-yellow-50 text-yellow-700 rounded-lg border border-yellow-200 hover:bg-yellow-100 transition-colors text-sm font-medium"
+                                    >
+                                        {t('message.send_reminder_to_unread')}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSendReminder('unreplied')}
+                                        className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors text-sm font-medium"
+                                    >
+                                        {t('message.send_reminder_to_unreplied')}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {/* TITLE */}
                         <div>
@@ -254,6 +385,26 @@ export default function MessageDetailPage() {
                             >
                                 {t('common.back')}
                             </button>
+                            
+                            {/* Edit and Delete buttons - Only for teacher */}
+                            {role === "teacher" && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(`/teacher/create-message`, { state: { editMessage: message } })}
+                                        className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                                    >
+                                        {t('message.edit_message')}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDelete}
+                                        className="flex-1 bg-red-600 text-white py-3 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                                    >
+                                        {t('message.delete_message')}
+                                    </button>
+                                </>
+                            )}
                         </div>
 
                     </div>
@@ -295,6 +446,20 @@ export default function MessageDetailPage() {
                                     <p className="font-medium text-gray-900">
                                         {new Date(message.read_at).toLocaleString("ja-JP")}
                                     </p>
+                                </div>
+                            )}
+                            
+                            {message.deadline && (
+                                <div>
+                                    <span className="text-gray-500">{t('message.deadline')}:</span>
+                                    <p className="font-semibold text-orange-600">
+                                        {new Date(message.deadline).toLocaleString("ja-JP")}
+                                    </p>
+                                    {message.reply_deadline_locked && (
+                                        <p className="text-xs text-red-600 mt-1">
+                                            🔒 {t('message.lock_reply_after_deadline')}
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>

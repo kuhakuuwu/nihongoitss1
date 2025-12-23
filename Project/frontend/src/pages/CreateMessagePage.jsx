@@ -17,6 +17,8 @@ export default function CreateMessagePage() {
     const [students, setStudents] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [showDropdown, setShowDropdown] = useState(false);
+    const [selectedClass, setSelectedClass] = useState("");
+    const [classList, setClassList] = useState([]);
 
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
@@ -24,6 +26,11 @@ export default function CreateMessagePage() {
 
     const [isComplexMessage, setIsComplexMessage] = useState(false);
     const [requireConfirmation, setRequireConfirmation] = useState(false);
+    
+    // Deadline settings
+    const [deadline, setDeadline] = useState("");
+    const [deadlineTime, setDeadlineTime] = useState("");
+    const [lockReplyAfterDeadline, setLockReplyAfterDeadline] = useState(false);
 
     // Reminder settings
     const [enableReminder, setEnableReminder] = useState(false);
@@ -37,7 +44,7 @@ export default function CreateMessagePage() {
     const [sending, setSending] = useState(false);
 
     // ============================================================
-    // 1. Load danh sách học sinh
+    // 1. Load danh sách học sinh và lớp học
     // ============================================================
     useEffect(() => {
         const fetchStudents = async () => {
@@ -64,7 +71,13 @@ export default function CreateMessagePage() {
             }
 
             const { data, error } = await query;
-            if (!error && data) setStudents(data);
+            if (!error && data) {
+                setStudents(data);
+                
+                // Lấy danh sách lớp học duy nhất
+                const classes = [...new Set(data.map(s => s.class).filter(Boolean))];
+                setClassList(classes);
+            }
         };
 
         fetchStudents();
@@ -130,6 +143,8 @@ export default function CreateMessagePage() {
                 is_complex: isComplexMessage,
                 require_confirmation: requireConfirmation,
                 attachment_url: uploadedFileUrl,
+                deadline: deadline && deadlineTime ? new Date(`${deadline}T${deadlineTime}`).toISOString() : null,
+                reply_deadline_locked: lockReplyAfterDeadline,
             };
 
             const { data: messageData, error: messageError } = await supabase
@@ -209,6 +224,9 @@ export default function CreateMessagePage() {
             setAttachment(null);
             setIsComplexMessage(false);
             setRequireConfirmation(false);
+            setDeadline("");
+            setDeadlineTime("");
+            setLockReplyAfterDeadline(false);
             setEnableReminder(false);
             setReminderOption("1hour");
             setCustomReminderDate("");
@@ -289,8 +307,33 @@ export default function CreateMessagePage() {
         const displayName = getStudentDisplayName(student).toLowerCase();
         const username = student.username.toLowerCase();
         const query = searchQuery.toLowerCase();
-        return displayName.includes(query) || username.includes(query);
+        const matchQuery = displayName.includes(query) || username.includes(query);
+        const matchClass = !selectedClass || selectedClass === 'all' || student.class === selectedClass;
+        return matchQuery && matchClass;
     });
+    
+    // Select all/deselect all functions
+    const handleSelectAll = () => {
+        const allUsernames = filteredStudents.map(s => s.username);
+        setSelectedRecipients(prev => {
+            const newSet = new Set([...prev, ...allUsernames]);
+            return Array.from(newSet);
+        });
+    };
+    
+    const handleDeselectAll = () => {
+        const filteredUsernames = filteredStudents.map(s => s.username);
+        setSelectedRecipients(prev => prev.filter(u => !filteredUsernames.includes(u)));
+    };
+    
+    // Select by class
+    const handleSelectByClass = (className) => {
+        const classStudents = students.filter(s => s.class === className).map(s => s.username);
+        setSelectedRecipients(prev => {
+            const newSet = new Set([...prev, ...classStudents]);
+            return Array.from(newSet);
+        });
+    };
 
     // ============================================================
     // 3. UI
@@ -308,6 +351,40 @@ export default function CreateMessagePage() {
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 {t('message.recipient')} <span className="text-red-500">*</span>
                             </label>
+                            
+                            {/* Class Filter và Select All */}
+                            <div className="flex gap-2 mb-3">
+                                <select
+                                    value={selectedClass}
+                                    onChange={(e) => setSelectedClass(e.target.value)}
+                                    className="border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                                >
+                                    <option value="">{t('message.all_classes')}</option>
+                                    {classList.map(cls => (
+                                        <option key={cls} value={cls}>{cls}</option>
+                                    ))}
+                                </select>
+                                
+                                <button
+                                    type="button"
+                                    onClick={handleSelectAll}
+                                    className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors text-sm font-medium"
+                                >
+                                    {t('message.select_all')}
+                                </button>
+                                
+                                <button
+                                    type="button"
+                                    onClick={handleDeselectAll}
+                                    className="px-3 py-2 bg-gray-50 text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors text-sm font-medium"
+                                >
+                                    {t('message.deselect_all')}
+                                </button>
+                                
+                                <div className="flex-1 text-right text-sm text-gray-600 py-2">
+                                    <span className="font-semibold text-green-600">{selectedRecipients.length}</span> {t('message.students_selected')}
+                                </div>
+                            </div>
                             
                             {/* Selected Recipients Display */}
                             {selectedRecipients.length > 0 && (
@@ -488,6 +565,46 @@ export default function CreateMessagePage() {
                                     className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                                 />
                                 <span className="text-sm text-gray-700">{t('message.require_reply')}</span>
+                            </label>
+                        </div>
+                        
+                        {/* DEADLINE SETTINGS */}
+                        <div className="bg-orange-50 p-4 border border-orange-200 rounded-lg space-y-3">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">{t('message.deadline')}</p>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">
+                                        {t('history.from_date')}
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={deadline}
+                                        onChange={(e) => setDeadline(e.target.value)}
+                                        className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">
+                                        {t('reminder.time_label')}
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={deadlineTime}
+                                        onChange={(e) => setDeadlineTime(e.target.value)}
+                                        className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={lockReplyAfterDeadline}
+                                    onChange={(e) => setLockReplyAfterDeadline(e.target.checked)}
+                                    className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                />
+                                <span className="text-sm text-gray-700">{t('message.lock_reply_after_deadline')}</span>
                             </label>
                         </div>
 

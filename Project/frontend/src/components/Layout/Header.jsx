@@ -10,11 +10,75 @@ export default function Header({ hideUserInfo = false }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
-  // ⭐ Lấy user từ localStorage
-  const [user] = useState(() => {
+  // ⭐ Lấy user từ localStorage và sync khi localStorage thay đổi
+  const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('user');
     return saved ? JSON.parse(saved) : null;
   });
+  
+  // Load user data từ database khi component mount
+  useEffect(() => {
+    const loadUserFromDB = async () => {
+      const saved = localStorage.getItem('user');
+      if (!saved) return;
+      
+      const localUser = JSON.parse(saved);
+      if (!localUser?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('avatar_url, first_name, last_name')
+          .eq('id', localUser.id)
+          .single();
+        
+        if (!error && data) {
+          const updatedUser = {
+            ...localUser,
+            avatar_url: data.avatar_url,
+            first_name: data.first_name,
+            last_name: data.last_name
+          };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+          setUser(updatedUser);
+          console.log('Header: Loaded user from DB:', updatedUser);
+          console.log('Header: Avatar URL from DB:', data.avatar_url);
+        }
+      } catch (err) {
+        console.error('Header: Error loading user from DB:', err);
+      }
+    };
+    
+    loadUserFromDB();
+  }, []);
+  
+  // Sync user khi localStorage thay đổi
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('user');
+      if (saved) {
+        const parsedUser = JSON.parse(saved);
+        console.log('Header: User updated from localStorage:', parsedUser);
+        console.log('Header: Avatar URL:', parsedUser.avatar_url);
+        setUser(parsedUser);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    // Custom event để trigger từ cùng tab
+    window.addEventListener('userUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userUpdated', handleStorageChange);
+    };
+  }, []);
+  
+  // Debug log để xem user state hiện tại
+  useEffect(() => {
+    console.log('Header: Current user state:', user);
+    console.log('Header: Current avatar_url:', user?.avatar_url);
+  }, [user]);
 
   const [showAccountMenu, setShowAccountMenu] = useState(false);
 
@@ -351,9 +415,17 @@ export default function Header({ hideUserInfo = false }) {
                   onClick={() => setShowAccountMenu((prev) => !prev)}
                   className="flex items-center gap-3 p-2 rounded-full hover:bg-gray-100 transition-colors"
                 >
-                  <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold">
-                    {getInitial()}
-                  </div>
+                  {user?.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt="Avatar"
+                      className="w-9 h-9 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold">
+                      {getInitial()}
+                    </div>
+                  )}
 
                   <div className="hidden sm:flex flex-col items-start">
                     {/* Username */}
@@ -393,7 +465,13 @@ export default function Header({ hideUserInfo = false }) {
                     )}
 
                     {/* View profile */}
-                    <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100">
+                    <button 
+                      onClick={() => {
+                        setShowAccountMenu(false);
+                        navigate('/profile');
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    >
                       {t('header.view_profile')}
                     </button>
 

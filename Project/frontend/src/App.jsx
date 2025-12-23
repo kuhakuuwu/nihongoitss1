@@ -18,6 +18,7 @@ import AdminMainPage from './pages/AdminMainPage'
 import HomePage from './pages/HomePage'
 import ClassListPage from './pages/ClassListPage'
 import ClassDetailPage from './pages/ClassDetailPage'
+import ProfilePage from './pages/ProfilePage'
 import './index.css'
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
 
         {/* Teacher */}
         <Route path="/teacher" element={<TeacherMainPage />} />

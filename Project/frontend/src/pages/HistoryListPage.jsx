@@ -28,7 +28,11 @@ export default function HistoryListPage() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [keyword, setKeyword] = useState(""); // chỉ filter recipient_id
+  const [keyword, setKeyword] = useState(""); // tìm kiếm theo title hoặc recipient
+  const [statusFilter, setStatusFilter] = useState("all"); // all, read, unread
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [deadlineFilter, setDeadlineFilter] = useState("all"); // all, has_deadline, no_deadline
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -58,24 +62,62 @@ export default function HistoryListPage() {
         return;
       }
 
-      // ----------- COUNT BEFORE PAGINATION -----------
-      const { count } = await supabase
+      // ----------- BUILD QUERY -----------
+      let countQuery = supabase
         .from("messages")
         .select("id", { head: true, count: "exact" })
-        .in("sender_id", possibleSenderIds)
-        .ilike("recipient_id", `%${keyword}%`);
+        .in("sender_id", possibleSenderIds);
+      
+      let dataQuery = supabase
+        .from("messages")
+        .select("*")
+        .in("sender_id", possibleSenderIds);
+      
+      // Tìm kiếm theo title hoặc recipient
+      if (keyword) {
+        countQuery = countQuery.or(`title.ilike.%${keyword}%,recipient_id.ilike.%${keyword}%`);
+        dataQuery = dataQuery.or(`title.ilike.%${keyword}%,recipient_id.ilike.%${keyword}%`);
+      }
+      
+      // Filter theo trạng thái đọc
+      if (statusFilter === "read") {
+        countQuery = countQuery.not("read_at", "is", null);
+        dataQuery = dataQuery.not("read_at", "is", null);
+      } else if (statusFilter === "unread") {
+        countQuery = countQuery.is("read_at", null);
+        dataQuery = dataQuery.is("read_at", null);
+      }
+      
+      // Filter theo ngày
+      if (dateFrom) {
+        countQuery = countQuery.gte("created_at", new Date(dateFrom).toISOString());
+        dataQuery = dataQuery.gte("created_at", new Date(dateFrom).toISOString());
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        countQuery = countQuery.lte("created_at", endDate.toISOString());
+        dataQuery = dataQuery.lte("created_at", endDate.toISOString());
+      }
+      
+      // Filter theo deadline
+      if (deadlineFilter === "has_deadline") {
+        countQuery = countQuery.not("deadline", "is", null);
+        dataQuery = dataQuery.not("deadline", "is", null);
+      } else if (deadlineFilter === "no_deadline") {
+        countQuery = countQuery.is("deadline", null);
+        dataQuery = dataQuery.is("deadline", null);
+      }
 
+      // ----------- COUNT BEFORE PAGINATION -----------
+      const { count } = await countQuery;
       if (active) setTotalCount(count || 0);
 
       // ----------- PAGINATED QUERY -----------
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .in("sender_id", possibleSenderIds)
-        .ilike("recipient_id", `%${keyword}%`)
+      const { data, error } = await dataQuery
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -89,7 +131,7 @@ export default function HistoryListPage() {
     return () => {
       active = false;
     };
-  }, [currentPage, keyword]);
+  }, [currentPage, keyword, statusFilter, dateFrom, dateTo, deadlineFilter]);
 
   // ================================================
   // PAGINATION HELPERS
@@ -133,7 +175,7 @@ export default function HistoryListPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
             {/* Search input */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -142,7 +184,7 @@ export default function HistoryListPage() {
                     setCurrentPage(1);
                     setKeyword(e.target.value);
                   }}
-                  placeholder="受信者IDで検索 (例: 031)"
+                  placeholder={t("history.search_title")}
                   className="w-72 pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                 />
               </div>
@@ -180,6 +222,79 @@ export default function HistoryListPage() {
               </button>
             </div>
           </div>
+          
+          {/* FILTERS */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+            {/* Status Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("history.filter_status")}
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              >
+                <option value="all">{t("history.filter_all")}</option>
+                <option value="read">{t("history.filter_read")}</option>
+                <option value="unread">{t("history.filter_unread")}</option>
+              </select>
+            </div>
+            
+            {/* Date From */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("history.from_date")}
+              </label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              />
+            </div>
+            
+            {/* Date To */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("history.to_date")}
+              </label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              />
+            </div>
+            
+            {/* Deadline Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("history.filter_deadline")}
+              </label>
+              <select
+                value={deadlineFilter}
+                onChange={(e) => {
+                  setDeadlineFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              >
+                <option value="all">{t("history.filter_all")}</option>
+                <option value="has_deadline">{t("history.has_deadline")}</option>
+                <option value="no_deadline">{t("history.no_deadline")}</option>
+              </select>
+            </div>
+          </div>
 
           {/* TABLE */}
           <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
@@ -205,6 +320,12 @@ export default function HistoryListPage() {
                     </div>
                   </th>
                   <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      {t("history.deadline")}
+                    </div>
+                  </th>
+                  <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t("history.status")}
                   </th>
                   <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -217,7 +338,7 @@ export default function HistoryListPage() {
 
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center">
+                    <td colSpan={6} className="py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <RefreshCw className="w-8 h-8 text-gray-400 animate-spin" />
                         <span className="text-gray-500">{t("common.loading")}</span>
@@ -226,7 +347,7 @@ export default function HistoryListPage() {
                   </tr>
                 ) : messages.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center">
+                    <td colSpan={6} className="py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Mail className="w-12 h-12 text-gray-300" />
                         <span className="text-gray-500">{t("common.no_messages")}</span>
@@ -262,6 +383,17 @@ export default function HistoryListPage() {
                       {/* DATE */}
                       <td className="py-4 px-6 text-sm text-gray-600">
                         {new Date(msg.created_at).toLocaleString("ja-JP")}
+                      </td>
+                      
+                      {/* DEADLINE */}
+                      <td className="py-4 px-6 text-sm">
+                        {msg.deadline ? (
+                          <span className="text-orange-600 font-medium">
+                            {new Date(msg.deadline).toLocaleString("ja-JP")}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
 
                       {/* STATUS */}
