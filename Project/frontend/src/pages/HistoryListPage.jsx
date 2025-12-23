@@ -298,37 +298,37 @@ export default function HistoryListPage() {
 
           {/* TABLE */}
           <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
-            <table className="w-full">
+            <table className="w-full text-xs">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="py-2 px-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4" />
                       {t("history.subject")}
                     </div>
                   </th>
-                  <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="py-2 px-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4" />
                       {t("history.recipient")}
                     </div>
                   </th>
-                  <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="py-2 px-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       {t("history.send_date")}
                     </div>
                   </th>
-                  <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="py-2 px-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       {t("history.deadline")}
                     </div>
                   </th>
-                  <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="py-2 px-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t("history.status")}
                   </th>
-                  <th className="py-4 px-6 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="py-2 px-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     {t("history.action")}
                   </th>
                 </tr>
@@ -359,7 +359,7 @@ export default function HistoryListPage() {
                     <tr key={msg.id} className="hover:bg-gray-50 transition-colors">
 
                       {/* SUBJECT */}
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3">
                         <div className="flex items-center gap-3">
                           {msg.status === "既読" || msg.read_at ? (
                             <MailOpen className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -371,7 +371,7 @@ export default function HistoryListPage() {
                       </td>
 
                       {/* RECIPIENT */}
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                             <User className="w-4 h-4 text-green-600" />
@@ -381,12 +381,12 @@ export default function HistoryListPage() {
                       </td>
 
                       {/* DATE */}
-                      <td className="py-4 px-6 text-sm text-gray-600">
+                      <td className="py-2 px-3 text-gray-600">
                         {new Date(msg.created_at).toLocaleString("ja-JP")}
                       </td>
                       
                       {/* DEADLINE */}
-                      <td className="py-4 px-6 text-sm">
+                      <td className="py-2 px-3">
                         {msg.deadline ? (
                           <span className="text-orange-600 font-medium">
                             {new Date(msg.deadline).toLocaleString("ja-JP")}
@@ -397,9 +397,9 @@ export default function HistoryListPage() {
                       </td>
 
                       {/* STATUS */}
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
+                          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold ${
                             msg.status === "既読" || msg.read_at
                               ? "bg-green-100 text-green-700"
                               : "bg-yellow-100 text-yellow-700"
@@ -417,10 +417,10 @@ export default function HistoryListPage() {
                       </td>
 
                       {/* ACTIONS */}
-                      <td className="py-4 px-6">
+                      <td className="py-2 px-3">
                         <button
                           onClick={() => handleViewDetail(msg.id)}
-                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center gap-1.5 font-medium"
+                          className="bg-green-600 text-white px-2 py-1 rounded-lg text-xs hover:bg-green-700 transition-colors flex items-center gap-1.5 font-medium"
                         >
                           <Eye className="w-4 h-4" />
                           {t("common.detail")}

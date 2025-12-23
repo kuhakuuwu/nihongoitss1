@@ -124,21 +124,31 @@ export default function ClassDetailPage() {
         }
 
         try {
-            // Lấy tất cả học sinh chưa có trong lớp
+            // Lấy tất cả học sinh đã có trong class_students
+            const { data: studentsInClasses, error: classStudentsError } = await supabase
+                .from('class_students')
+                .select('student_id');
+
+            const studentIdsInClasses = studentsInClasses ? studentsInClasses.map(cs => cs.student_id) : [];
+
+            // Lấy học sinh chưa có trong lớp nào
             const currentStudentIds = students.map(s => s.id);
             const studentsToAddIds = studentsToAdd.map(s => s.id);
             const excludedIds = [...currentStudentIds, ...studentsToAddIds];
 
             const { data, error } = await supabase
                 .from('users')
-                .select('id, username, email, user_code, first_name, last_name')
+                .select('id, username, email, user_code, first_name, last_name, class')
                 .eq('role', 'student')
                 .not('id', 'in', `(${excludedIds.join(',')})`)
                 .or(`email.ilike.%${query}%,username.ilike.%${query}%,user_code.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
                 .limit(10);
 
             if (error) throw error;
-            setAvailableStudents(data || []);
+
+            // Lọc bỏ học sinh đã có trong lớp khác
+            const filtered = (data || []).filter(student => !studentIdsInClasses.includes(student.id));
+            setAvailableStudents(filtered);
         } catch (error) {
             console.error('Error searching students:', error);
         }
@@ -166,6 +176,14 @@ export default function ClassDetailPage() {
                 .eq('student_id', studentId);
 
             if (error) throw error;
+
+            // Xóa trường class trong bảng users
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ class: null })
+                .eq('id', studentId);
+
+            if (updateError) throw updateError;
 
             setStudents(students.filter(s => s.id !== studentId));
             setSuccess(t('classManagement.update_success'));
@@ -240,6 +258,15 @@ export default function ClassDetailPage() {
                     .insert(newClassStudents);
 
                 if (addError) throw addError;
+
+                // Cập nhật trường class trong bảng users
+                const studentIds = studentsToAdd.map(s => s.id);
+                const { error: updateClassError } = await supabase
+                    .from('users')
+                    .update({ class: editName.trim() })
+                    .in('id', studentIds);
+
+                if (updateClassError) throw updateClassError;
             }
 
             setSuccess(t('classManagement.update_success'));

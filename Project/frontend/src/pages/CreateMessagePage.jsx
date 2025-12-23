@@ -73,10 +73,26 @@ export default function CreateMessagePage() {
             const { data, error } = await query;
             if (!error && data) {
                 setStudents(data);
-                
-                // Lấy danh sách lớp học duy nhất
-                const classes = [...new Set(data.map(s => s.class).filter(Boolean))];
-                setClassList(classes);
+
+                // Thử lấy danh sách lớp từ bảng `classes` nếu có (hiển thị đầy đủ tất cả các lớp)
+                try {
+                    const { data: classesData, error: classesError } = await supabase
+                        .from('classes')
+                        .select('name')
+                        .order('name', { ascending: true });
+
+                    if (!classesError && classesData && classesData.length > 0) {
+                        const names = classesData.map(c => c.name).filter(Boolean);
+                        setClassList(names);
+                    } else {
+                        // Fallback: lấy từ danh sách học sinh nếu bảng classes không tồn tại hoặc rỗng
+                        const classes = [...new Set(data.map(s => s.class).filter(Boolean))];
+                        setClassList(classes);
+                    }
+                } catch (err) {
+                    const classes = [...new Set(data.map(s => s.class).filter(Boolean))];
+                    setClassList(classes);
+                }
             }
         };
 

@@ -41,6 +41,7 @@ export default function AddUserPage() {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [newClass, setNewClass] = useState('');
     const [searchLoading, setSearchLoading] = useState(false);
+    const [availableClasses, setAvailableClasses] = useState([]);
     
     // Common states
     const [loading, setLoading] = useState(false);
@@ -51,8 +52,26 @@ export default function AddUserPage() {
     useEffect(() => {
         if (isTeacherMode) {
             loadStudents();
+            loadAvailableClasses();
         }
     }, [isTeacherMode]);
+
+    const loadAvailableClasses = async () => {
+        try {
+            const { data, error: fetchError } = await supabase
+                .from('classes')
+                .select('name')
+                .order('name', { ascending: true });
+
+            if (fetchError) {
+                console.error('Fetch classes error:', fetchError);
+            } else {
+                setAvailableClasses(data || []);
+            }
+        } catch (err) {
+            console.error('Error loading classes:', err);
+        }
+    };
 
     const loadStudents = async () => {
         setSearchLoading(true);
@@ -110,22 +129,55 @@ export default function AddUserPage() {
         setSuccess('');
 
         try {
+            const newClassName = newClass.trim();
+
+            // Kiểm tra class có tồn tại trong bảng classes không
+            const { data: classData, error: classError } = await supabase
+                .from('classes')
+                .select('id, name')
+                .eq('name', newClassName)
+                .single();
+
+            if (classError && classError.code !== 'PGRST116') {
+                throw classError;
+            }
+
+            if (!classData) {
+                setError('Lớp không tồn tại. Vui lòng chọn lớp từ danh sách.');
+                setLoading(false);
+                return;
+            }
+
+            // Bước 1: Xóa record cũ trong class_students (nếu có)
+            await supabase
+                .from('class_students')
+                .delete()
+                .eq('student_id', selectedStudent.id);
+
+            // Bước 2: Thêm record mới vào class_students
+            const { error: insertError } = await supabase
+                .from('class_students')
+                .insert({
+                    class_id: classData.id,
+                    student_id: selectedStudent.id
+                });
+
+            if (insertError) throw insertError;
+
+            // Bước 3: Update trường class trong bảng users
             const { error: updateError } = await supabase
                 .from('users')
-                .update({ class: newClass.trim() })
+                .update({ class: newClassName })
                 .eq('id', selectedStudent.id);
 
-            if (updateError) {
-                console.error('Update error:', updateError);
-                setError(t('addUser.update_failed'));
-            } else {
-                setSuccess(t('addUser.update_success'));
-                // Update local state
-                setStudents(prev => prev.map(s => 
-                    s.id === selectedStudent.id ? { ...s, class: newClass.trim() } : s
-                ));
-                setSelectedStudent(prev => ({ ...prev, class: newClass.trim() }));
-            }
+            if (updateError) throw updateError;
+
+            setSuccess(t('addUser.update_success'));
+            // Update local state
+            setStudents(prev => prev.map(s => 
+                s.id === selectedStudent.id ? { ...s, class: newClassName } : s
+            ));
+            setSelectedStudent(prev => ({ ...prev, class: newClassName }));
         } catch (err) {
             console.error('Error:', err);
             setError(t('addUser.update_failed'));
@@ -302,14 +354,28 @@ export default function AddUserPage() {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     {t('addUser.new_class')} <span className="text-red-500">*</span>
                                                 </label>
-                                                <input
-                                                    type="text"
-                                                    value={newClass}
-                                                    onChange={(e) => setNewClass(e.target.value)}
-                                                    placeholder={t('addUser.class_placeholder')}
-                                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
-                                                    required
-                                                />
+                                                {availableClasses.length > 0 ? (
+                                                    <select
+                                                        value={newClass}
+                                                        onChange={(e) => setNewClass(e.target.value)}
+                                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                                                        required
+                                                    >
+                                                        <option value="">{t('addUser.class_placeholder')}</option>
+                                                        {availableClasses.map((cls, idx) => (
+                                                            <option key={idx} value={cls.name}>{cls.name}</option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    <input
+                                                        type="text"
+                                                        value={newClass}
+                                                        onChange={(e) => setNewClass(e.target.value)}
+                                                        placeholder={t('addUser.class_placeholder')}
+                                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                                                        required
+                                                    />
+                                                )}
                                             </div>
 
                                             <div className="flex gap-3">

@@ -11,6 +11,10 @@ export default function ClassListPage() {
     const [classes, setClasses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [editingClass, setEditingClass] = useState(null);
+    const [deletingClass, setDeletingClass] = useState(null);
     const [className, setClassName] = useState('');
     const [description, setDescription] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -80,18 +84,25 @@ export default function ClassListPage() {
         }
 
         try {
+            // Chỉ lấy học sinh chưa có trong class_students (chưa thuộc lớp nào)
+            const { data: studentsInClasses, error: classStudentsError } = await supabase
+                .from('class_students')
+                .select('student_id');
+
+            const studentIdsInClasses = studentsInClasses ? studentsInClasses.map(cs => cs.student_id) : [];
+
             const { data, error } = await supabase
                 .from('users')
-                .select('id, username, email, user_code, first_name, last_name')
+                .select('id, username, email, user_code, first_name, last_name, class')
                 .eq('role', 'student')
                 .or(`email.ilike.%${query}%,username.ilike.%${query}%,user_code.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
                 .limit(10);
 
             if (error) throw error;
 
-            // Lọc bỏ những học sinh đã được chọn
+            // Lọc bỏ học sinh đã được chọn hoặc đã có trong lớp khác
             const filtered = data.filter(
-                student => !selectedStudents.find(s => s.id === student.id)
+                student => !selectedStudents.find(s => s.id === student.id) && !studentIdsInClasses.includes(student.id)
             );
 
             setAvailableStudents(filtered);
@@ -183,6 +194,15 @@ export default function ClassListPage() {
                     .insert(classStudents);
 
                 if (studentsError) throw studentsError;
+
+                // Cập nhật trường class trong bảng users
+                const studentIds = selectedStudents.map(s => s.id);
+                const { error: updateClassError } = await supabase
+                    .from('users')
+                    .update({ class: className.trim() })
+                    .in('id', studentIds);
+
+                if (updateClassError) throw updateClassError;
             }
 
             setSuccess(t('classManagement.create_success'));
@@ -194,6 +214,142 @@ export default function ClassListPage() {
         } catch (error) {
             console.error('Error creating class:', error);
             setError(t('classManagement.create_failed'));
+        }
+    };
+
+    // Mở modal chỉnh sửa lớp
+    const handleOpenEditModal = (cls) => {
+        setEditingClass(cls);
+        setClassName(cls.name);
+        setDescription(cls.description || '');
+        setShowEditModal(true);
+        setError('');
+        setSuccess('');
+    };
+
+    // Cập nhật lớp học
+    const handleUpdateClass = async (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+
+        if (!className.trim()) {
+            setError(t('classManagement.class_name_required'));
+            return;
+        }
+
+        try {
+            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+            // Lấy user ID thực từ database dựa trên email
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('email', currentUser.email)
+                .single();
+
+            if (userError || !userData) {
+                setError('Không tìm thấy thông tin người dùng');
+                return;
+            }
+
+            const teacherId = userData.id;
+
+            // Kiểm tra tên lớp đã tồn tại (trừ lớp đang chỉnh sửa)
+            const { data: existingClass } = await supabase
+                .from('classes')
+                .select('id')
+                .eq('teacher_id', teacherId)
+                .eq('name', className.trim())
+                .neq('id', editingClass.id)
+                .single();
+
+            if (existingClass) {
+                setError(t('classManagement.class_name_exists'));
+                return;
+            }
+
+            // Cập nhật lớp học
+            const { error: updateError } = await supabase
+                .from('classes')
+                .update({
+                    name: className.trim(),
+                    description: description.trim() || null
+                })
+                .eq('id', editingClass.id);
+
+            if (updateError) throw updateError;
+
+            // Nếu tên lớp thay đổi, cập nhật users.class cho học sinh trong lớp
+            if (className.trim() !== editingClass.name) {
+                const { data: classStudents } = await supabase
+                    .from('class_students')
+                    .select('student_id')
+                    .eq('class_id', editingClass.id);
+
+                if (classStudents && classStudents.length > 0) {
+                    const studentIds = classStudents.map(cs => cs.student_id);
+                    await supabase
+                        .from('users')
+                        .update({ class: className.trim() })
+                        .in('id', studentIds);
+                }
+            }
+
+            setSuccess(t('classManagement.update_success'));
+            setShowEditModal(false);
+            setEditingClass(null);
+            setClassName('');
+            setDescription('');
+            fetchClasses();
+        } catch (error) {
+            console.error('Error updating class:', error);
+            setError(t('classManagement.update_failed'));
+        }
+    };
+
+    // Mở modal xác nhận xóa
+    const handleOpenDeleteModal = (cls) => {
+        setDeletingClass(cls);
+        setShowDeleteModal(true);
+        setError('');
+        setSuccess('');
+    };
+
+    // Xóa lớp học
+    const handleDeleteClass = async () => {
+        try {
+            // Lấy danh sách học sinh trong lớp để cập nhật users.class
+            const { data: classStudents } = await supabase
+                .from('class_students')
+                .select('student_id')
+                .eq('class_id', deletingClass.id);
+
+            // Xóa lớp học (cascade sẽ xóa class_students tự động nếu có ON DELETE CASCADE)
+            const { error: deleteError } = await supabase
+                .from('classes')
+                .delete()
+                .eq('id', deletingClass.id);
+
+            if (deleteError) throw deleteError;
+
+            // Cập nhật users.class về null cho học sinh trong lớp
+            if (classStudents && classStudents.length > 0) {
+                const studentIds = classStudents.map(cs => cs.student_id);
+                await supabase
+                    .from('users')
+                    .update({ class: null })
+                    .in('id', studentIds);
+            }
+
+            setSuccess(t('classManagement.delete_success'));
+            setShowDeleteModal(false);
+            setDeletingClass(null);
+            fetchClasses();
+        } catch (error) {
+            console.error('Error deleting class:', error);
+            setError(t('classManagement.delete_failed'));
+            setShowDeleteModal(false);
         }
     };
 
@@ -302,11 +458,13 @@ export default function ClassListPage() {
                                                     {t('common.detail')}
                                                 </button>
                                                 <button
+                                                    onClick={() => handleOpenEditModal(cls)}
                                                     className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium shadow-sm"
                                                 >
                                                     {t('common.edit')}
                                                 </button>
                                                 <button
+                                                    onClick={() => handleOpenDeleteModal(cls)}
                                                     className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium shadow-sm"
                                                 >
                                                     {t('common.delete')}
@@ -457,6 +615,117 @@ export default function ClassListPage() {
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Modal chỉnh sửa lớp học */}
+                {showEditModal && editingClass && (
+                    <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+                            <div className="p-6">
+                                <h3 className="text-2xl font-bold text-gray-900 mb-6">
+                                    {t('classManagement.edit_class')}
+                                </h3>
+
+                                {error && (
+                                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+                                        {error}
+                                    </div>
+                                )}
+
+                                <form onSubmit={handleUpdateClass} className="space-y-4">
+                                    {/* Tên lớp */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            {t('classManagement.class_name')} <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={className}
+                                            onChange={(e) => setClassName(e.target.value)}
+                                            placeholder={t('classManagement.class_name_placeholder')}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                    </div>
+
+                                    {/* Mô tả */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            {t('classManagement.description')}
+                                        </label>
+                                        <textarea
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            placeholder={t('classManagement.description_placeholder')}
+                                            rows={3}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                    </div>
+
+                                    {/* Buttons */}
+                                    <div className="flex gap-3 justify-end pt-4">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowEditModal(false);
+                                                setEditingClass(null);
+                                                setClassName('');
+                                                setDescription('');
+                                                setError('');
+                                            }}
+                                            className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                                        >
+                                            {t('common.cancel')}
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                        >
+                                            {t('common.save')}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Modal xác nhận xóa */}
+                {showDeleteModal && deletingClass && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+                            <div className="p-6">
+                                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                                    {t('classManagement.delete_confirm_title')}
+                                </h3>
+                                
+                                <p className="text-gray-700 mb-2">
+                                    {t('classManagement.delete_confirm_message')} <span className="font-semibold">{deletingClass.name}</span>?
+                                </p>
+                                
+                                <p className="text-sm text-gray-500 mb-6">
+                                    {t('classManagement.delete_confirm_note')}
+                                </p>
+
+                                <div className="flex gap-3 justify-end">
+                                    <button
+                                        onClick={() => {
+                                            setShowDeleteModal(false);
+                                            setDeletingClass(null);
+                                        }}
+                                        className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteClass}
+                                        className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                                    >
+                                        {t('common.delete')}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
